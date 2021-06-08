@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Semantic Matching
+
+semantic_matching/.vscode
+semantic_matching/dataset/
+semantic_matching/Experiment*
