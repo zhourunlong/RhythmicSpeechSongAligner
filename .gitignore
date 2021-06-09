@@ -131,6 +131,7 @@ dmypy.json
 
 # Semantic Matching
 
+semantic_matching/best.txt
 semantic_matching/.vscode
-semantic_matching/dataset/
+semantic_matching/dataset/*.json
 semantic_matching/Experiment*

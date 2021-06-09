@@ -9,10 +9,13 @@ class SemanticMatchingModel(nn.Module):
         self.tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/bert-base-nli-mean-tokens')
         self.bert = AutoModel.from_pretrained('sentence-transformers/bert-base-nli-mean-tokens')
         self.freeze_bert()
-        self.lin1 = nn.Linear(768, 768, False)
-        self.act = nn.Sigmoid()
-        self.lin2 = nn.Linear(1, 1)
-        self.act = nn.Sigmoid()        
+        self.lin = nn.Linear(768, 768, False)
+        self.act = nn.Sequential(
+            nn.Linear(1, 1),
+            nn.ReLU(),
+            nn.Linear(1, 1),
+            nn.Sigmoid()
+        )
 
     def freeze_bert(self):
         for param in self.bert.parameters():
@@ -42,11 +45,11 @@ class SemanticMatchingModel(nn.Module):
         embed1 = self.encode(sen1)
         embed2 = self.encode(sen2)
 
-        embed1 = self.lin1(embed1)
-        embed2 = self.lin1(embed2)
+        embed1 = self.lin(embed1)
+        embed2 = self.lin(embed2)
 
-        feature = nn.CosineSimilarity()(embed1, embed2)
-        return 5 * self.act(self.lin2(feature.unsqueeze(-1)).view((-1,)))
+        feature = nn.CosineSimilarity()(embed1, embed2).unsqueeze(-1)
+        return 5 * self.act(feature).view(-1,)
 
 if __name__ == "__main__":
     model = SemanticMatchingModel()
