@@ -1,9 +1,9 @@
-#Download dataset
+## Download dataset
 
 - 2012-2016 from https://github.com/brmson/dataset-sts/tree/master/data/sts/semeval-sts
 - 2017 input from http://alt.qcri.org/semeval2017/task1/data/uploads/sts2017.eval.v1.1.zip, ground truth from http://alt.qcri.org/semeval2017/task1/data/uploads/sts2017.gs.zip
 
-#Arrange files
+## Arrange files
 
 ```
 │  create_dataset.ipynb
@@ -48,6 +48,6 @@
         STS.input.track5.en-en.txt
 ```
 
-#Create dataset
+## Create dataset
 
 Run all commands in `create_dataset.ipynb`, you will get two files: `train.json` and `valid.json`.
