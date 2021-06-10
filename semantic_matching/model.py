@@ -9,10 +9,13 @@ class SemanticMatchingModel(nn.Module):
         self.tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/bert-base-nli-mean-tokens')
         self.bert = AutoModel.from_pretrained('sentence-transformers/bert-base-nli-mean-tokens')
         self.freeze_bert()
-        self.lin1 = nn.Linear(768, 768, False)
-        self.act = nn.Sigmoid()
-        self.lin2 = nn.Linear(1, 1)
-        self.act = nn.Sigmoid()        
+        self.lin = nn.Linear(768, 768, False)
+        self.act = nn.Sequential(
+            nn.Linear(1, 1),
+            nn.ReLU(),
+            nn.Linear(1, 1),
+            nn.Sigmoid()
+        )
 
     def freeze_bert(self):
         for param in self.bert.parameters():
@@ -42,11 +45,28 @@ class SemanticMatchingModel(nn.Module):
         embed1 = self.encode(sen1)
         embed2 = self.encode(sen2)
 
-        embed1 = self.lin1(embed1)
-        embed2 = self.lin1(embed2)
+        embed1 = self.lin(embed1)
+        embed2 = self.lin(embed2)
 
-        feature = nn.CosineSimilarity()(embed1, embed2)
-        return 5 * self.act(self.lin2(feature.unsqueeze(-1)).view((-1,)))
+        feature = nn.CosineSimilarity()(embed1, embed2).unsqueeze(-1)
+        return 5 * self.act(feature).view(-1,)
+    
+    def calc_similarity(self, sen1, sen2):
+        embed1 = self.encode(sen1)
+        embed2 = self.encode(sen2)
+
+        embed1 = self.lin(embed1)
+        embed2 = self.lin(embed2)
+
+        # manually calculate cosine similarity
+        similarity = torch.matmul(embed1, embed2.transpose(0, 1))
+        norm1 = torch.norm(embed1, dim=1, keepdim=True)
+        norm2 = torch.norm(embed2, dim=1, keepdim=True)
+        norm = torch.matmul(norm1, norm2.transpose(0, 1))
+        norm[norm < 1e-8] = 1e-8
+        similarity /= norm
+
+        return 5 * self.act(similarity.view((-1, 1))).view(norm1.shape[0], -1)
 
 if __name__ == "__main__":
     model = SemanticMatchingModel()
@@ -60,5 +80,12 @@ if __name__ == "__main__":
         "The person box was packed with jelly many dozens of months later.",
         "He found a leprechaun in his walnut shell."
     ]
+    sen3 = [
+        "The person box was packed with jelly many dozens of months later.",
+        "He found a leprechaun in his walnut shell.",
+        "Though one must not pick flowers on the way up, the blossoms trailed in as they passed."
+    ]
 
     print(model(sen1, sen2))
+
+    print(model.calc_similarity(sen1, sen3))

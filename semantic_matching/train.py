@@ -90,6 +90,8 @@ if __name__ == "__main__":
         scheduler.step()
 
     # fine-tuning
+    state_dict = torch.load(os.path.join(logdir, "models/best.pt"))
+    model.load_state_dict(state_dict["model"])
     model.unfreeze_bert()
     ft_optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
 

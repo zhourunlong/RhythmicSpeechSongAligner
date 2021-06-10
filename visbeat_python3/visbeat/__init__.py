@@ -7,6 +7,7 @@ from visbeat.VisBeatExampleVideo import VisBeatExampleVideo
 import re
 import os;
 import shutil
+import numpy as np
 
 
 from visbeat.SourceLocationParser import ParseSourseLocation
@@ -218,10 +219,12 @@ def Dancefer(source_video, target,
     if(bitrate):
         warp_args.update(dict(bitrate=bitrate));
 
+    print("vbeat,tbeat")
+
     warp_args.update(kwargs);
     warped_result = source_video.getWarped(**warp_args);
 
-    print("vbeat,tbeat")
+
 
     if(output_path):
         final_output_path = output_path;
@@ -404,6 +407,15 @@ def Dancify(source_video, target,
                      warp_type=warp_type,
                      force_recompute=force_recompute,
                      name_tag = name_tag)
+
+    vbeats_txt = []
+    tbeats_txt = []
+    for beat in vbeats:
+        vbeats_txt.append(float(beat.start))
+    for beat in tbeats:
+        tbeats_txt.append(float(beat.start))
+    np.savetxt("vbeats.txt",vbeats_txt,fmt='%4f')
+    np.savetxt("tbeats.txt",tbeats_txt,fmt='%4f')
     if(bitrate):
         warp_args.update(dict(bitrate=bitrate));
 
