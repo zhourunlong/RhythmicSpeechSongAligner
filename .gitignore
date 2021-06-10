@@ -128,10 +128,19 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Global
+
+.vscode
+.git
+
 
 # Semantic Matching
 
 semantic_matching/best.txt
-semantic_matching/.vscode
 semantic_matching/dataset/*.json
 semantic_matching/Experiment*
+semantic_matching/*.pt
+
+# Asset
+
+asset/
