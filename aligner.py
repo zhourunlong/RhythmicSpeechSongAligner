@@ -8,6 +8,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--song", default=None, type=str)
     parser.add_argument("--k", default=5, type=int)
+    parser.add_argument("--batch-size", default=512, type=int)
     return parser.parse_args()
 
 def caption_to_text(caption):
@@ -57,13 +58,18 @@ if __name__ == "__main__":
         cnt += 1
     audio_text = caption_to_text(audio_caption)
 
+    print(len(audio_text), "sentences in song,", len(video_text), "sentences in video(s).")
+
     model = SemanticMatchingModel()
     state_dict = torch.load("semantic_matching/ft_best.pt")
     model.load_state_dict(state_dict["model"])
     model.cuda()
 
     with torch.no_grad():
-        similarity = model.calc_similarity(audio_text, video_text)
+        batched_similarities = []
+        for b in range(0, len(video_text), args.batch_size):
+            batched_similarities.append(model.calc_similarity(audio_text, video_text[b:b+args.batch_size]))
+    similarity = torch.cat(batched_similarities, 1)
     sim_topk, idx_topk = torch.topk(similarity, args.k)
 
     for i in range(len(audio_text)):
