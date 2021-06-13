@@ -10,6 +10,7 @@ import shutil
 import numpy as np
 
 
+
 from visbeat.SourceLocationParser import ParseSourseLocation
 
 VISBEAT_ASSETS_DIR = './VisBeatAssets/';

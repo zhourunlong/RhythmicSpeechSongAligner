@@ -3,6 +3,7 @@
 from visbeat.VisBeatExampleVideo import *
 from visbeat._music_examples import *
 
+
 # dances = [];
 dances.append(VisBeatExampleVideo(display_name = 'SNSD: HAHAHA', name='snsd_hahaha', url='https://www.youtube.com/watch?v=OxNsx0eMsGU', start_beat=42));
 dances.append(VisBeatExampleVideo(display_name = 'Boston Dynamics: Spot the Dancing Robot', name='spot_the_dancing_robot', url='https://www.youtube.com/watch?v=kHBcVlqpvZ8', start_beat = 9));
