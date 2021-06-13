@@ -35,12 +35,20 @@ vb.PullVideo(name=synth_ball.name, source_location=synth_ball.path);
 
 vid = vb.LoadVideo(name=synth_ball.name)
 
+path_to_test_video2 = os.path.join(test_files_folder, 'synth_ball.mp4');
+synth_ball=SourceMedia(path = path_to_test_video2);
+
+# Pull the video into VisBeatAssets
+vb.PullVideo(name=synth_ball.name, source_location=synth_ball.path);
+
+vid2 = vb.LoadVideo(name=synth_ball.name)
+
 synch_video_beat = 0;
 synch_audio_beat = 0;
-nbeats = 16;
+nbeats = 0;
 
 output_path = './SexyTurtleScientist.mp4';
 
-warped = vb.Dancify(source_video=vid, target=vid, synch_video_beat=synch_video_beat,
+warped = vb.Dancify(source_video=vid, target=vid2, synch_video_beat=synch_video_beat,
                     synch_audio_beat=synch_audio_beat, force_recompute=True, warp_type = 'quad',
                     nbeats=nbeats, output_path = output_path)
