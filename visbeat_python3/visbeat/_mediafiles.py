@@ -1,6 +1,6 @@
 import os
 
-
+ 
 VB_MEDIA_UTILS_PATH = os.path.abspath(__file__)
 VB_MEDIA_UTILS_DIR = os.path.abspath(os.path.dirname(__file__));
 MEDIAFILES_DIR = os.path.join(VB_MEDIA_UTILS_DIR, '_assets'+os.sep)

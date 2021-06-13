@@ -4,6 +4,7 @@ from visbeat.Event import *
 from visbeat.VisualBeat import *
 import librosa
 
+
 FEATURE_FUNCS = {};
 VIS_FUNCS = {};
 VISVIDEO_FUNCS = {};

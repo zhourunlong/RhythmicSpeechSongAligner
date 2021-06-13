@@ -1,6 +1,7 @@
 from visbeat.TimeSignal import *
 import math
 
+
 class TimeSignal1D(TimeSignal):
     """TimeSignal1D (class): A time signal, and a bunch of convenience functions to go with it.
         Attributes:

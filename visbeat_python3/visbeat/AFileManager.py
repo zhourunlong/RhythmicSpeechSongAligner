@@ -2,6 +2,7 @@ from visbeat.AObject import *
 #import shutil
 from distutils.dir_util import copy_tree
 
+
 class AFileManager(AObject):
     """AFileManager (class): Manages assets. This should really be replaced with a database of some sort...
         Attributes:

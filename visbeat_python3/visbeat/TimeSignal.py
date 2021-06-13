@@ -4,6 +4,7 @@ import math
 from operator import truediv
 from visbeat.VisBeatImports import *
 
+
 class TimeSignal(VBObject):
     """TimeSignal (class): A time signal, and a bunch of convenience functions to go with it.
         Attributes:

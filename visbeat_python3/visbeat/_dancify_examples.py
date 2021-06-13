@@ -5,7 +5,7 @@ dances.append(VisBeatExampleVideo(display_name = 'Turtle', name='turtle', url='h
 dances.append(VisBeatExampleVideo(display_name = 'Louie The Cat', name='louie_the_cat', url='https://www.youtube.com/watch?v=hqFG6d86ygI', start_beat=None));
 
 
-
+ 
 accidental_dances = [];
 accidental_dances.append(VisBeatExampleVideo(display_name="Trump IACP Full", name="trump_iacp_full", url='https://www.youtube.com/watch?v=pu4dPTi6SEg', target_n_beats = 7))
 accidental_dances.append(VisBeatExampleVideo(display_name="Trump Tax Reform WH.gov Full", name="trump_taxreform_remarks_1", url="https://www.youtube.com/watch?v=zB-lhTEQdKY"))

@@ -1,5 +1,6 @@
 from visbeat.Event import *
 
+
 class VisualBeat(Event):
     def VBOBJECT_TYPE(self):
         return 'VisualBeat';

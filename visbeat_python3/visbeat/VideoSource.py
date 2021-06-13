@@ -2,6 +2,7 @@ from visbeat.VisBeatImports import *
 from visbeat.Video import *
 from visbeat.AFileManager import AFileManager
 
+
 try:
     import youtube_dl
 except ImportError:

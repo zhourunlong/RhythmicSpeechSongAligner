@@ -4,6 +4,7 @@ from visbeat.VisBeatImports import *
 from visbeat.AFuncDict import *
 from visbeat.AObject import AObject
 
+
 class VBObject(AObject):
     """VBObject (class): This is a paarent class used to implement common serialization and other functions. There ends
         up being three different dictionaries of data.

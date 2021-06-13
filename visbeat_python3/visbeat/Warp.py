@@ -4,6 +4,7 @@ from visbeat.VisBeatImports import *
 from visbeat.EventList import *
 import math
 
+
 DEFAULT_LEAD_TIME = 0;
 DEFAULT_TAIL_TIME = 0;
 

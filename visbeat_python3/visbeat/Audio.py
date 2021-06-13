@@ -8,6 +8,7 @@ from scipy import signal, fftpack
 
 
 
+
 class Audio(TimeSignal1D):
     """Audio (class): A sound, and a bunch of convenience functions to go with it.
         Attributes:

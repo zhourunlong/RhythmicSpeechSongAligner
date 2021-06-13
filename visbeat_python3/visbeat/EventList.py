@@ -1,5 +1,6 @@
 from visbeat.Event import *
 
+
 class EventList(AObject):
     """Event (class): An event in time, either in video or audio
         Attributes:

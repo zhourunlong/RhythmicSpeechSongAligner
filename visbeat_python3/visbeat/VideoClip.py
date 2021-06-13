@@ -2,6 +2,7 @@
 from visbeat.Video import *
 from visbeat.AudioClip import *
 
+
 class VideoClip(Video):
     """VideoClip (class): A segment of a video, and a bunch of convenience functions to go with it.
         Attributes:

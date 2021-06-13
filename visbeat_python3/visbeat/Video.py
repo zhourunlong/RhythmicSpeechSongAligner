@@ -7,6 +7,7 @@ from visbeat.Image import *
 import moviepy.editor as mpy
 from moviepy.audio.AudioClip import AudioArrayClip as MPYAudioArrayClip
 
+
 import sys
 
 import math

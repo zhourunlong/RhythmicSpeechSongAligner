@@ -5,6 +5,7 @@ import json
 from visbeat.AParamDict import *
 import visbeat.fileui
 
+
 class AObject(object):
     """AObject (class): This is a paarent class used to implement any comon serialization or typing we might want to do later
         Attributes:

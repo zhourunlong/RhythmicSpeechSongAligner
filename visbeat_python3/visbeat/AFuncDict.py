@@ -1,6 +1,7 @@
 from visbeat.AParamDict import *
 import pickle
 import os
+
 class AFuncDict(AParamDict):
     """AFuncDict (class): Extends AParamDict so that functions can be assigned to features and called whenever
         computing those features is necessary.

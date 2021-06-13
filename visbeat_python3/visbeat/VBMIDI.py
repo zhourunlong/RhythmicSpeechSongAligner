@@ -6,6 +6,7 @@ import os
 from visbeat.Audio import *
 from visbeat.Event import *
 
+
 class VBMIDITrack(object):
     def __init__(self, track, ticks_per_beat):
         self.mido_track = track;

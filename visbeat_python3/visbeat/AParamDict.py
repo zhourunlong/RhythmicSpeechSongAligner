@@ -1,4 +1,5 @@
 from visbeat.AImports import *
+
 class AParamDict(object):
     """AParamDict (class): Dictionary that stores values and the parameters used to compute those values. I use this
         class for two things. The first is to store parameters for reproducability. The second is to only recompute
