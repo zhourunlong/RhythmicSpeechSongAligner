@@ -11,6 +11,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--k", default=5, type=int)
     parser.add_argument("--batch-size", default=512, type=int)
+    parser.add_argument("--gap-threshold", default=5, type=int)
     return parser.parse_args()
 
 def caption_to_text(caption):
@@ -125,13 +126,17 @@ if __name__ == "__main__":
     similarity = torch.cat(batched_similarities, 1)
     sim_topk, idx_topk = torch.topk(similarity, args.k)
 
+    warp = []
     for i in range(len(audio_text)):
         print(audio_text[i])
         atime_start = audio_caption[i].start.total_seconds()
         atime_end = audio_caption[i].end.total_seconds()
-        apos_start = lower_bound(abeats, atime_start) - 1
-        apos_end = lower_bound(abeats, atime_end) + 1
-        print(atime_start, atime_end, abeats[apos_start:apos_end])
+        apos_start = lower_bound(abeats, atime_start) 
+        apos_end = lower_bound(abeats, atime_end)
+        #print(atime_start, atime_end, abeats[apos_start:apos_end])
+        abeats_count = apos_end - apos_start
+
+        opt_diff = 999999999
 
         for k in range(args.k):
             idx = idx_topk[i, k]
@@ -140,7 +145,48 @@ if __name__ == "__main__":
             vtime_start = vcap[source[idx][1]].start.total_seconds()
             vtime_end = vcap[source[idx][1]].end.total_seconds()
             beats = vbeats[source[idx][0]]
-            vpos_start = lower_bound(beats, vtime_start) - 1
-            vpos_end = lower_bound(beats, vtime_end) + 1
-            print(vtime_start, vtime_end, beats[vpos_start:vpos_end])
+            vpos_start = lower_bound(beats, vtime_start)
+            vpos_end = lower_bound(beats, vtime_end)
+            
+            #print(vtime_start, vtime_end, beats[vpos_start:vpos_end])
+            vbeats_count = vpos_end - vpos_start
 
+            # try to find a close number of beats
+            tmp = abs(vbeats_count - abeats_count)
+            if tmp < opt_diff:
+                opt_diff = tmp
+                video_idx = source[idx][0]
+                opt_vpos_start, opt_vpos_end = vpos_start, vpos_end
+        
+        # warp audio beats [apos_start, apos_end) with <video_idx>th video's [opt_vpos_start, opt_vpos_end) beats
+        warp.append([apos_start, apos_end, video_idx, opt_vpos_start, opt_vpos_end])
+    
+    # fill gaps between audio beats
+    n = len(warp)
+    for i in range(n - 1):
+        if warp[i + 1][0] - warp[i][1] < args.gap_threshold:
+            # tiny gap, continue the former video beats
+            warp[i][1] = warp[i + 1][0]
+        else:
+            # big gap, choose another video clip, randomly
+            idx = np.random.randint(len(vbeats))
+            gap = np.random.randint(1, warp[i + 1][0] - warp[i][1] + 1)
+            pos_start = np.random.randint(len(vbeats[idx]) - gap)
+            warp.append([warp[i][1], warp[i + 1][0], idx, pos_start, pos_start + gap])
+    
+    if warp[0][0] != 0:
+        idx = np.random.randint(len(vbeats))
+        gap = np.random.randint(1, warp[0][0] + 1)
+        pos_start = np.random.randint(len(vbeats[idx]) - gap)
+        warp.append([0, warp[0][0], idx, pos_start, pos_start + gap])
+    
+    if warp[n - 1][1] != len(abeats):
+        idx = np.random.randint(len(vbeats))
+        gap = np.random.randint(1, len(abeats) - warp[n - 1][1] + 1)
+        pos_start = np.random.randint(len(vbeats[idx]) - gap)
+        warp.append([warp[n - 1][1], len(abeats), idx, pos_start, pos_start + gap])
+
+    warp.sort(key=lambda x:x[0])
+    print(warp)
+
+    # In the following, do warping
