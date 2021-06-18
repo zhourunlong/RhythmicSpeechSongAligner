@@ -25,7 +25,6 @@ import time
 import shutil
 from time import gmtime, strftime, localtime
 import librosa
-from visbeat._mediafiles import GetVBMarkPath
 
 def local_time_string():
     return strftime("%Y-%m-%d_%H:%M:%S", localtime())

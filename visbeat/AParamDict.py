@@ -1,34 +1,42 @@
-from visbeat.AParamDict import *
-import pickle
-import os
+from visbeat.AImports import *
 
-class AFuncDict(AParamDict):
-    """AFuncDict (class): Extends AParamDict so that functions can be assigned to features and called whenever
-        computing those features is necessary.
+class AParamDict(object):
+    """AParamDict (class): Dictionary that stores values and the parameters used to compute those values. I use this
+        class for two things. The first is to store parameters for reproducability. The second is to only recompute
+        values when functions are called with different parameters (some of this latter functionality is tied up in
+        code that isn't part of the Lite release).
+
         Attributes:
             data: name -> value, params
-            feature funcs: name -> function for evaluating
     """
 
     def __init__(self, owner=None, name=None, path=None):
-        AParamDict.__init__(self, owner=owner, name=name, path=path)
-        self.functions = {}
+        self.name=name
+        self.data = {}
+        self.owner=owner
+        self.modified=False
 
     def getEntry(self, name=None, params=None, force_recompute=False):
         d = self.data.get(name)
         if((d is not None) and (not force_recompute)):
             return d
-        else:
-            f = self.getFunction(name=name)
-            if(f is not None):
-                if(params is not None):
-                    if(not params.get('force_recompute')):
-                        params.update(dict(force_recompute=force_recompute))
-                    self.setValue(name=name, value=f(self=self.owner, **params), params=params, modified=True)
-                else:
-                    self.setValue(name=name, value=f(self=self.owner, force_recompute=force_recompute), params=params, modified=True)
-            return self.data.get(name)
         return None
+
+    def setEntry(self, name, d):
+        assert(name!='all' and name!='each'),"Entry named '{}' is reserved in AParamDict".format(name)
+        self.data[name]=d
+
+    def removeEntry(self, name, assert_if_absent=True, set_modified = True):
+        if(assert_if_absent):
+            assert(name in self.data),"Tried to remove entry {} that was not already in {}".format(name, self.__class__)
+        popentry = self.data.pop(name, None)
+        if(set_modified):
+            self.setModified(set_modified)
+        return popentry
+
+
+    def hasEntry(self, name=None):
+        return (self.data.get(name) is not None)
 
     def getValue(self, name=None, params=None, force_recompute=False):
         d = self.getEntry(name=name, params=params, force_recompute=force_recompute)
@@ -44,29 +52,20 @@ class AFuncDict(AParamDict):
         else:
             return None
 
-    def getFunction(self, name=None):
-        return self.functions.get(name)
-
     def setValue(self, name, value=None, params=None, modified=True):
         self.data[name]['value']=value
         self.data[name]['params']=params
         self.setEntryModified(name=name, is_modified=modified)
-        #self.data[name]['modified']=modified
-
-    def setFunction(self, name, function=None):
-        self.functions[name]=function
 
     def saveEntry(self, name, path, force=False):
         """Save one entry to one file."""
-        if(self.data.get(name) is None):
+        if(self.hasEntry(name=name) is None):
             return None
         if(self.isEntryModified(name=name) or force or (not os.path.isfile(path))):
-            #pickleToPath
             f = open(path, 'wb')
             pickle.dump(self.getEntry(name=name), f, protocol=2)
             f.close()
             self.setEntryModified(name=name, is_modified=False)
-            #assert(False), "should not be saving in this test"
         return True
 
     def setEntryModified(self, name, is_modified=True):
@@ -75,15 +74,11 @@ class AFuncDict(AParamDict):
             self.setModified(is_modified=True)
 
     def isEntryModified(self, name):
-        entry = self.data.get(name)
-        if(entry is not None):
-            m=entry.get('modified')
-            if(m is not None):
-                return m
-            else:
-                return True
+        m=self.data[name].get('modified')
+        if(m is not None):
+            return m
         else:
-            assert(False), "checking mod bit on entry that does not exist"
+            return True
 
     def isModified(self):
         return self.modified
@@ -98,7 +93,6 @@ class AFuncDict(AParamDict):
             pickle.dump(self.data, f, protocol=2)
             f.close()
             self.setModified(is_modified=False)
-            #assert(False), "should not be saving in this test"
         return True
 
     def loadEntry(self, name, path):
@@ -119,6 +113,3 @@ class AFuncDict(AParamDict):
 
     def getKeyList(self):
         return list(self.data.keys())
-
-    def getFunctionList(self):
-        return list(self.functions.keys())

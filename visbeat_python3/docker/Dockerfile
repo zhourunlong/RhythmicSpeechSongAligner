@@ -63,6 +63,6 @@ RUN chmod 755 ./visbeat
 
 USER $NB_UID
 
-RUN $CONDA_DIR/envs/python2/bin/python -c "import imageio; imageio.plugins.ffmpeg.download()"
+RUN $CONDA_DIR/envs/python2/bin/python -c "import imageio imageio.plugins.ffmpeg.download()"
 
 WORKDIR $HOME/visbeat/examples/

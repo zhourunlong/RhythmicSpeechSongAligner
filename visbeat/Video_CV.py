@@ -160,7 +160,7 @@ if(USING_OPENCV):
         duration = self.getDuration()
         nsamples = sampling_rate*duration
 
-        frame_start_times = np.linspace(0,duration,num=nsamples,endpoint=False)
+        frame_start_times = np.linspace(0,duration,num=int(nsamples),endpoint=False)
         frame_index_floats = frame_start_times*self.sampling_rate
 
         lastframe = self.cvGetGrayFrame(frame_index_floats[0])
