@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModel
-from sklearn.metrics.pairwise import cosine_similarity
 
 class SemanticMatchingModel(nn.Module):
     def __init__(self):
