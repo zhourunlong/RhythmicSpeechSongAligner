@@ -9,7 +9,7 @@ import pickle
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--k", default=1, type=int)
+    parser.add_argument("--k", default=5, type=int)
     parser.add_argument("--batch-size", default=512, type=int)
     parser.add_argument("--gap-threshold", default=5, type=int)
     return parser.parse_args()
@@ -113,12 +113,12 @@ if __name__ == "__main__":
     audio_text = caption_to_text(audio_caption)
 
     print(len(audio_text), "sentences in song,", len(video_text), "sentences in video(s).")
-
+    
     model = SemanticMatchingModel()
-    state_dict = torch.load("semantic_matching/ft_best.pt")
+    state_dict = torch.load("semantic_matching/ft_best.pt",map_location=torch.device('cpu'))
     model.load_state_dict(state_dict["model"])
-    model.cuda()
-
+    model = model.to('cpu')
+    
     with torch.no_grad():
         batched_similarities = []
         for b in range(0, len(video_text), args.batch_size):
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     warp = []
     for i in range(len(audio_text)):
-        #print(audio_text[i])
+        print(audio_text[i])
         atime_start = audio_caption[i].start.total_seconds()
         atime_end = audio_caption[i].end.total_seconds()
         apos_start = lower_bound(abeats, atime_start) 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
         for k in range(args.k):
             idx = idx_topk[i, k]
-            #print("\t", video_text[idx], "%1.3f" % (sim_topk[i, k].item()), video_fn[source[idx][0]], source[idx][1])
+            print("\t", video_text[idx], "%1.3f" % (sim_topk[i, k].item()), video_fn[source[idx][0]], source[idx][1])
             vcap = video_captions[source[idx][0]]
             vtime_start = vcap[source[idx][1]].start.total_seconds()
             vtime_end = vcap[source[idx][1]].end.total_seconds()
@@ -155,11 +155,8 @@ if __name__ == "__main__":
             tmp = abs(vbeats_count - abeats_count)
             if tmp < opt_diff:
                 opt_diff = tmp
-                opt_idx = idx
                 video_idx = source[idx][0]
                 opt_vpos_start, opt_vpos_end = vpos_start, vpos_end
-        
-        print(audio_text[i], " --> ", video_text[opt_idx])
         
         # warp audio beats [apos_start, apos_end) with <video_idx>th video's [opt_vpos_start, opt_vpos_end) beats
         warp.append([apos_start, apos_end, video_idx, opt_vpos_start, opt_vpos_end])
@@ -190,6 +187,6 @@ if __name__ == "__main__":
         warp.append([warp[n - 1][1], len(abeats), idx, pos_start, pos_start + gap])
 
     warp.sort(key=lambda x:x[0])
-    #print(warp)
+    print(warp)
 
     # In the following, do warping
