@@ -1,3 +1,0 @@
-# AD_DEBUG = 1
-
-AD_DEBUG = 0 

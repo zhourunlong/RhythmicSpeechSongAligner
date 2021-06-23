@@ -1,11 +1,13 @@
 import srt
 import argparse
 import torch
-import os, sys
+import os, sys, time
 from semantic_matching.model import SemanticMatchingModel
 import visbeat as vb
 import numpy as np
 import pickle
+from operator import truediv
+from moviepy.editor import VideoFileClip, concatenate_videoclips
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -25,31 +27,33 @@ class SourceMedia:
 def audio_get_beats(path_to_file, path_to_pickle):
     if os.path.exists(path_to_pickle):
         with open(path_to_pickle, 'rb') as f:
-            return pickle.load(f)
+            abeats = pickle.load(f)
+    else:
+        audio_file = SourceMedia(path_to_file)
+        vb.PullVideo(name=audio_file.name, source_location=audio_file.path)
+        vid = vb.LoadVideo(name=audio_file.name)
+        vid_audio = vid.getAudio()
+        abeats = vid_audio.getBeatEvents()
+        f = open(path_to_pickle, 'wb')
+        pickle.dump(abeats, f)
     
-    audio_file = SourceMedia(path_to_file)
-    vb.PullVideo(name=audio_file.name, source_location=audio_file.path)
-    vid = vb.LoadVideo(name=audio_file.name)
-    vid_audio = vid.getAudio()
-    abeats = vid_audio.getBeatEvents()
     beats = [float(beat.start) for beat in abeats]
-    f = open(path_to_pickle, 'wb')
-    pickle.dump(beats, f)
-    return beats
+    return abeats, beats
 
 def video_get_beats(path_to_file, path_to_pickle):
     if os.path.exists(path_to_pickle):
         with open(path_to_pickle, 'rb') as f:
-            return pickle.load(f)
-
-    video_file = SourceMedia(path_to_file)
-    vb.PullVideo(name=video_file.name, source_location=video_file.path)
-    vid = vb.LoadVideo(name=video_file.name)
-    vbeats = vid.getVisualBeats()
+            vbeats = pickle.load(f)
+    else:
+        video_file = SourceMedia(path_to_file)
+        vb.PullVideo(name=video_file.name, source_location=video_file.path)
+        vid = vb.LoadVideo(name=video_file.name)
+        vbeats = vid.getVisualBeats()
+        f = open(path_to_pickle, 'wb')
+        pickle.dump(vbeats, f)
+    
     beats = [float(beat.start) for beat in vbeats]
-    f = open(path_to_pickle, 'wb')
-    pickle.dump(beats, f)
-    return beats
+    return vbeats, beats
 
 def lower_bound(nums, target):
     low, high = 0, len(nums) - 1
@@ -63,6 +67,11 @@ def lower_bound(nums, target):
     if nums[low] >= target:
         pos = low
     return pos
+
+def get_file(path_to_file):
+    video_file = SourceMedia(path_to_file)
+    #vb.PullVideo(name=video_file.name, source_location=video_file.path)
+    return vb.LoadVideo(name=video_file.name)
 
 if __name__ == "__main__":
     args = get_args()
@@ -92,15 +101,17 @@ if __name__ == "__main__":
 
     os.makedirs("asset/beats", exist_ok=True)
 
-    video_captions, video_fn, vbeats = [], [], []
+    video_captions, video_fn, vbeats_event, vbeats = [], [], [], []
     for fn in all_fn:
         if fn != "song":
-            vbeats.append(video_get_beats("asset/" + fn + ".mp4", "asset/beats/" + fn + ".beats"))
+            _vbeats_event, _vbeats = video_get_beats("asset/" + fn + ".mp4", "asset/beats/" + fn + ".beats")
+            vbeats_event.append(_vbeats_event)
+            vbeats.append(_vbeats)
             video_fn.append(fn)
             with open("asset/" + fn + ".srt") as f:
                 video_captions.append(list(srt.parse(f.read())))
     
-    abeats = audio_get_beats("asset/song.mp4", "asset/beats/song.beats")
+    abeats_event, abeats = audio_get_beats("asset/song.mp4", "asset/beats/song.beats")
     with open("asset/song.srt") as f:
         audio_caption =  list(srt.parse(f.read()))
 
@@ -115,9 +126,9 @@ if __name__ == "__main__":
     print(len(audio_text), "sentences in song,", len(video_text), "sentences in video(s).")
     
     model = SemanticMatchingModel()
-    state_dict = torch.load("semantic_matching/ft_best.pt",map_location=torch.device('cpu'))
+    state_dict = torch.load("semantic_matching/ft_best.pt")
     model.load_state_dict(state_dict["model"])
-    model = model.to('cpu')
+    model = model.cuda()
     
     with torch.no_grad():
         batched_similarities = []
@@ -126,13 +137,13 @@ if __name__ == "__main__":
     similarity = torch.cat(batched_similarities, 1)
     sim_topk, idx_topk = torch.topk(similarity, args.k)
 
-    warp = []
+    warps = []
     for i in range(len(audio_text)):
-        print(audio_text[i])
+        #print(audio_text[i])
         atime_start = audio_caption[i].start.total_seconds()
         atime_end = audio_caption[i].end.total_seconds()
         apos_start = lower_bound(abeats, atime_start) 
-        apos_end = lower_bound(abeats, atime_end)
+        apos_end = lower_bound(abeats, atime_end) - 1
         #print(atime_start, atime_end, abeats[apos_start:apos_end])
         abeats_count = apos_end - apos_start
 
@@ -140,13 +151,13 @@ if __name__ == "__main__":
 
         for k in range(args.k):
             idx = idx_topk[i, k]
-            print("\t", video_text[idx], "%1.3f" % (sim_topk[i, k].item()), video_fn[source[idx][0]], source[idx][1])
+            #print("\t", video_text[idx], "%1.3f" % (sim_topk[i, k].item()), video_fn[source[idx][0]], source[idx][1])
             vcap = video_captions[source[idx][0]]
             vtime_start = vcap[source[idx][1]].start.total_seconds()
             vtime_end = vcap[source[idx][1]].end.total_seconds()
             beats = vbeats[source[idx][0]]
             vpos_start = lower_bound(beats, vtime_start)
-            vpos_end = lower_bound(beats, vtime_end)
+            vpos_end = lower_bound(beats, vtime_end) - 1
             
             #print(vtime_start, vtime_end, beats[vpos_start:vpos_end])
             vbeats_count = vpos_end - vpos_start
@@ -154,39 +165,110 @@ if __name__ == "__main__":
             # try to find a close number of beats
             tmp = abs(vbeats_count - abeats_count)
             if tmp < opt_diff:
+                opt_idx = idx
                 opt_diff = tmp
                 video_idx = source[idx][0]
                 opt_vpos_start, opt_vpos_end = vpos_start, vpos_end
         
+        print(audio_text[i], "--->", video_text[idx])
         # warp audio beats [apos_start, apos_end) with <video_idx>th video's [opt_vpos_start, opt_vpos_end) beats
-        warp.append([apos_start, apos_end, video_idx, opt_vpos_start, opt_vpos_end])
+        warps.append([apos_start, apos_end, video_idx, opt_vpos_start, opt_vpos_end])
     
     # fill gaps between audio beats
-    n = len(warp)
+    n = len(warps)
     for i in range(n - 1):
-        if warp[i + 1][0] - warp[i][1] < args.gap_threshold:
+        if warps[i + 1][0] - warps[i][1] < args.gap_threshold:
             # tiny gap, continue the former video beats
-            warp[i][1] = warp[i + 1][0]
+            warps[i][1] = warps[i + 1][0]
         else:
             # big gap, choose another video clip, randomly
             idx = np.random.randint(len(vbeats))
-            gap = np.random.randint(1, warp[i + 1][0] - warp[i][1] + 1)
+            gap = np.random.randint(1, warps[i + 1][0] - warps[i][1] + 1)
             pos_start = np.random.randint(len(vbeats[idx]) - gap)
-            warp.append([warp[i][1], warp[i + 1][0], idx, pos_start, pos_start + gap])
+            warps.append([warps[i][1], warps[i + 1][0], idx, pos_start, pos_start + gap])
     
-    if warp[0][0] != 0:
+    if warps[0][0] != 0:
         idx = np.random.randint(len(vbeats))
-        gap = np.random.randint(1, warp[0][0] + 1)
+        gap = np.random.randint(1, warps[0][0] + 1)
         pos_start = np.random.randint(len(vbeats[idx]) - gap)
-        warp.append([0, warp[0][0], idx, pos_start, pos_start + gap])
+        warps.append([0, warps[0][0], idx, pos_start, pos_start + gap])
     
-    if warp[n - 1][1] != len(abeats):
+    if warps[n - 1][1] < len(abeats) - 1:
         idx = np.random.randint(len(vbeats))
-        gap = np.random.randint(1, len(abeats) - warp[n - 1][1] + 1)
+        gap = np.random.randint(1, len(abeats) - warps[n - 1][1])
         pos_start = np.random.randint(len(vbeats[idx]) - gap)
-        warp.append([warp[n - 1][1], len(abeats), idx, pos_start, pos_start + gap])
+        warps.append([warps[n - 1][1], len(abeats) - 1, idx, pos_start, pos_start + gap])
 
-    warp.sort(key=lambda x:x[0])
-    print(warp)
+    warps.sort(key=lambda x:x[0])
+    #print(warps)
 
-    # In the following, do warping
+    song = get_file("asset/song.mp4")
+    speeches = []
+    for fn in video_fn:
+        speeches.append(get_file("asset/" + fn + ".mp4"))
+
+    sampling_rate = song._getFrameRate()
+    output_audio = song.getAudio()
+    old_frame_time = truediv(1.0, sampling_rate)
+
+    video_clips = []
+
+    os.makedirs("temp", exist_ok=True)
+
+    tidx = 0
+    for warp_info in warps:
+        #print(warp_info)
+        apos_start, apos_end, idx, vpos_start, vpos_end = warp_info
+        vid = speeches[idx]
+        target_start, target_end = abeats[apos_start], abeats[apos_end]
+        target_duration = target_end - target_start
+
+        new_n_samples = int(target_duration * sampling_rate + 0.5)
+        target_start_times = np.linspace(target_start, target_end, num=new_n_samples, endpoint=False)
+        unwarped_target_times = []
+   
+        source_events = vbeats_event[idx][vpos_start:vpos_end+1]
+        target_events = abeats_event[apos_start:apos_end+1]
+        #print(source_events, target_events)
+        warp = vb.Warp.FromEvents(source_events, target_events)
+        warp.setWarpFunc("quad")
+        for st in target_start_times:
+            unwarped_target_times.append(warp.warpTargetTime(st))
+
+        frame_index_floats = np.true_divide(np.array(unwarped_target_times), old_frame_time)
+        tempfilepath = vb.get_temp_file_path(final_file_path="temp/clip.mp4", temp_dir_path = vb.Video.VIDEO_TEMP_DIR)
+        vid.openVideoWriter(output_file_path=tempfilepath)
+        start_timer = time.time()
+        last_timer = start_timer
+        fcounter = 0
+        
+        
+        for nf in range(len(frame_index_floats)):
+            try:
+                nwfr = vid.getFrame(frame_index_floats[nf])
+                vid.writeFrame(nwfr)
+            except ValueError:
+                print("VALUE ERROR ON WRITEFRAME {}".format(frame_index_floats[nf]))
+                vid.writeFrame(vid.getFrame(math.floor(frame_index_floats[nf])))
+
+            fcounter += 1
+            if (not (fcounter % 50)):
+                if ((time.time() - last_timer) > 10):
+                    last_timer = time.time()
+                    print("{}%% done after {} seconds...".format(100.0 * truediv(fcounter, len(frame_index_floats)), last_timer - start_timer))
+        vid.closeVideoWriter()
+
+        silent_warped_vid = vb.Video(tempfilepath)
+
+        cropped_output_audio = output_audio.AudioClip(start=target_start, end=target_end)
+
+        rvid = vb.Video.CreateFromVideoAndAudioObjects(video=silent_warped_vid, audio=cropped_output_audio, output_path="temp/clip" + str(tidx) + ".mp4")
+
+        tidx += 1
+    
+    clips = []
+    for i in range(tidx):
+        clips.append(VideoFileClip("temp/clip" + str(i) + ".mp4"))
+
+    finalclip = concatenate_videoclips(clips)
+    finalclip.write_videofile("output.mp4")
