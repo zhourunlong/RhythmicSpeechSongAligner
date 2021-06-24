@@ -190,7 +190,7 @@ if __name__ == "__main__":
                 opt_diff = tmp
                 opt_vpos_start, opt_vpos_end = vpos_start, vpos_end
         
-        #print(audio_text[i], "--->", video_text[opt_idx])
+        print(audio_text[i], "--->", video_text[opt_idx])
         #vcap = video_captions[source[opt_idx][0]]
         #print("\t", video_fn[source[opt_idx][0]], vcap[source[opt_idx][1]].start.total_seconds(), vcap[source[opt_idx][1]].end.total_seconds())
         # warp audio beats [apos_start, apos_end) with <video_idx>th video's [opt_vpos_start, opt_vpos_end) beats
@@ -273,9 +273,9 @@ if __name__ == "__main__":
         frame_index_floats = np.true_divide(np.array(unwarped_target_times), old_frame_time)
         tempfilepath = vb.get_temp_file_path(final_file_path="temp/clip" + str(tidx) + ".mp4", temp_dir_path = vb.Video.VIDEO_TEMP_DIR)
         vid.openVideoWriter(output_file_path=tempfilepath, fps=sampling_rate)
-        start_timer = time.time()
-        last_timer = start_timer
-        fcounter = 0
+        #start_timer = time.time()
+        #last_timer = start_timer
+        #fcounter = 0
         
         for nf in range(len(frame_index_floats)):
             try:
@@ -285,11 +285,13 @@ if __name__ == "__main__":
                 print("VALUE ERROR ON WRITEFRAME {}".format(frame_index_floats[nf]))
                 vid.writeFrame(vid.getFrame(math.floor(frame_index_floats[nf])))
 
+            '''
             fcounter += 1
             if (not (fcounter % 50)):
                 if ((time.time() - last_timer) > 10):
                     last_timer = time.time()
                     print("{}%% done after {} seconds...".format(100.0 * truediv(fcounter, len(frame_index_floats)), last_timer - start_timer))
+            '''
         vid.closeVideoWriter()
 
         silent_warped_vid = vb.Video(tempfilepath)
