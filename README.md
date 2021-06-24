@@ -1,4 +1,4 @@
-# RhythmicSpeechSongAligner
+# Rhythmic Speech-Song Aligner
 RhythmicSpeechSongAligner is a course project for Multimedia Computing, instructed by Hang Zhao, IIIS, Tsinghua.
 
 ## Usage
@@ -20,3 +20,7 @@ Otherwise:
 2. Put your `song.{mp4, srt}` and `<videos>.{mp4, srt}` under `asset/`
 
 3. Run `CUDA_VISIBLE_DEVICES=<gpu_id> TOKENIZERS_PARALLELISM=false python aligner.py`
+
+## Our results
+
+See `results/`.
