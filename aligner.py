@@ -8,12 +8,14 @@ import numpy as np
 import pickle
 from operator import truediv
 from moviepy.editor import VideoFileClip, concatenate_videoclips
+import pathos
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--k", default=5, type=int)
     parser.add_argument("--batch-size", default=512, type=int)
     parser.add_argument("--gap-threshold", default=5, type=int)
+    parser.add_argument("--walk-prob", default=0.3, type=float)
     return parser.parse_args()
 
 def caption_to_text(caption):
@@ -70,8 +72,25 @@ def lower_bound(nums, target):
 
 def get_file(path_to_file):
     video_file = SourceMedia(path_to_file)
-    #vb.PullVideo(name=video_file.name, source_location=video_file.path)
     return vb.LoadVideo(name=video_file.name)
+
+def walk(arr, n, prob):
+    k = len(arr)
+    narr = []
+    probs = np.random.random((n,))
+    pos = 0
+    for i in range(n):
+        narr.append(arr[pos])
+        if pos == 0:
+            pos += 1
+        elif pos == k - 1:
+            pos -= 1
+        else:
+            if probs[i] < prob:
+                pos -= 1
+            else:
+                pos += 1
+    return narr
 
 if __name__ == "__main__":
     args = get_args()
@@ -146,6 +165,7 @@ if __name__ == "__main__":
         apos_end = lower_bound(abeats, atime_end) - 1
         #print(atime_start, atime_end, abeats[apos_start:apos_end])
         abeats_count = apos_end - apos_start
+        #print(abeats_count)
 
         opt_diff = 999999999
 
@@ -161,18 +181,20 @@ if __name__ == "__main__":
             
             #print(vtime_start, vtime_end, beats[vpos_start:vpos_end])
             vbeats_count = vpos_end - vpos_start
+            #print("\t", vbeats_count)
 
             # try to find a close number of beats
             tmp = abs(vbeats_count - abeats_count)
             if tmp < opt_diff:
                 opt_idx = idx
                 opt_diff = tmp
-                video_idx = source[idx][0]
                 opt_vpos_start, opt_vpos_end = vpos_start, vpos_end
         
-        print(audio_text[i], "--->", video_text[idx])
+        #print(audio_text[i], "--->", video_text[opt_idx])
+        #vcap = video_captions[source[opt_idx][0]]
+        #print("\t", video_fn[source[opt_idx][0]], vcap[source[opt_idx][1]].start.total_seconds(), vcap[source[opt_idx][1]].end.total_seconds())
         # warp audio beats [apos_start, apos_end) with <video_idx>th video's [opt_vpos_start, opt_vpos_end) beats
-        warps.append([apos_start, apos_end, video_idx, opt_vpos_start, opt_vpos_end])
+        warps.append([apos_start, apos_end, source[opt_idx][0], opt_vpos_start, opt_vpos_end])
     
     # fill gaps between audio beats
     n = len(warps)
@@ -189,13 +211,14 @@ if __name__ == "__main__":
     
     if warps[0][0] != 0:
         idx = np.random.randint(len(vbeats))
-        gap = np.random.randint(1, warps[0][0] + 1)
+        gap = np.random.randint(int(warps[0][0] * 0.66), warps[0][0] + 1)
         pos_start = np.random.randint(len(vbeats[idx]) - gap)
         warps.append([0, warps[0][0], idx, pos_start, pos_start + gap])
     
     if warps[n - 1][1] < len(abeats) - 1:
         idx = np.random.randint(len(vbeats))
-        gap = np.random.randint(1, len(abeats) - warps[n - 1][1])
+        L = len(abeats) - warps[n - 1][1] - 1
+        gap = np.random.randint(int(L * 0.66), L + 1)
         pos_start = np.random.randint(len(vbeats[idx]) - gap)
         warps.append([warps[n - 1][1], len(abeats) - 1, idx, pos_start, pos_start + gap])
 
@@ -203,23 +226,23 @@ if __name__ == "__main__":
     #print(warps)
 
     song = get_file("asset/song.mp4")
+    
     speeches = []
     for fn in video_fn:
         speeches.append(get_file("asset/" + fn + ".mp4"))
 
     sampling_rate = song._getFrameRate()
     output_audio = song.getAudio()
-    old_frame_time = truediv(1.0, sampling_rate)
 
     video_clips = []
 
     os.makedirs("temp", exist_ok=True)
 
-    tidx = 0
+    tidx = -1
     for warp_info in warps:
+        tidx += 1
         #print(warp_info)
         apos_start, apos_end, idx, vpos_start, vpos_end = warp_info
-        vid = speeches[idx]
         target_start, target_end = abeats[apos_start], abeats[apos_end]
         target_duration = target_end - target_start
 
@@ -228,20 +251,31 @@ if __name__ == "__main__":
         unwarped_target_times = []
    
         source_events = vbeats_event[idx][vpos_start:vpos_end+1]
+        #tmp = [float(_.start) for _ in source_events]
+        #print(tmp)
+        #print(vbeats[idx][vpos_start:vpos_end+1])
+        source_events = walk(source_events, apos_end + 1 - apos_start, args.walk_prob)
         target_events = abeats_event[apos_start:apos_end+1]
         #print(source_events, target_events)
         warp = vb.Warp.FromEvents(source_events, target_events)
         warp.setWarpFunc("quad")
         for st in target_start_times:
             unwarped_target_times.append(warp.warpTargetTime(st))
+        #print(apos_end - apos_start, vpos_end - vpos_start)
+        #print(unwarped_target_times)
 
+        #if tidx == 1:
+        #    break
+        #continue
+
+        vid = speeches[idx]
+        old_frame_time = truediv(1.0, vid._getFrameRate())
         frame_index_floats = np.true_divide(np.array(unwarped_target_times), old_frame_time)
-        tempfilepath = vb.get_temp_file_path(final_file_path="temp/clip.mp4", temp_dir_path = vb.Video.VIDEO_TEMP_DIR)
-        vid.openVideoWriter(output_file_path=tempfilepath)
+        tempfilepath = vb.get_temp_file_path(final_file_path="temp/clip" + str(tidx) + ".mp4", temp_dir_path = vb.Video.VIDEO_TEMP_DIR)
+        vid.openVideoWriter(output_file_path=tempfilepath, fps=sampling_rate)
         start_timer = time.time()
         last_timer = start_timer
         fcounter = 0
-        
         
         for nf in range(len(frame_index_floats)):
             try:
@@ -262,9 +296,10 @@ if __name__ == "__main__":
 
         cropped_output_audio = output_audio.AudioClip(start=target_start, end=target_end)
 
-        rvid = vb.Video.CreateFromVideoAndAudioObjects(video=silent_warped_vid, audio=cropped_output_audio, output_path="temp/clip" + str(tidx) + ".mp4")
+        #print(cropped_output_audio.getDuration(), silent_warped_vid.getDuration())
 
-        tidx += 1
+        rvid = vb.Video.CreateFromVideoAndAudioObjects(video=silent_warped_vid, audio=cropped_output_audio, output_path="temp/clip" + str(tidx) + ".mp4")
+        os.remove(tempfilepath)
     
     clips = []
     for i in range(tidx):
